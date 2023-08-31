@@ -1,8 +1,9 @@
 import datetime
 import glob
-from typing import List, Union
+from typing import List, Union, Literal
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 
@@ -31,6 +32,7 @@ def reformat_df(
         dfr_resampled = resample_df(df_feature, start_time, end_time, signalname, sampling_rate=sampling_rate)
         dfr_resampled_list.append(dfr_resampled.loc[:, ['WeighedMean']].rename(columns={'WeighedMean': signalname}))
     return pd.concat(dfr_resampled_list, axis=1, ignore_index=False)
+
 
 def resample_df(df_raw: pd.DataFrame,
                 start_time: datetime.datetime,
@@ -75,6 +77,7 @@ def resample_df(df_raw: pd.DataFrame,
     df_resampled = df[df['Zeros'] == 0].iloc[1:]
     return df_resampled
 
+
 def reformat_df_commas(csv_path: Union[str, Path]):
     """Reformat csv file to semicolon separated columns.
     
@@ -86,3 +89,139 @@ def reformat_df_commas(csv_path: Union[str, Path]):
         df = pd.read_csv(file, sep=',')
         df.to_csv(file, sep=';', index=False)
         print(f"Reformatted {file} to semicolon separated columns.")
+        
+        
+def read_and_resample_mmts(
+    csv_path: Union[str, Path],
+    start_time: datetime.datetime = datetime.datetime(2022, 1, 1),
+    end_time: datetime.datetime = datetime.datetime(2023, 1, 1),
+) -> pd.DataFrame:
+    """
+    Reads a CSV file containing substation measurement data, resamples it to a fixed frequency of 15min, 
+    and returns a pandas DataFrame.
+
+    Args:
+        csv_path (Union[str, Path]): The path to the CSV file.
+        start_time (datetime.datetime, optional): The start time of the resampled data. Defaults to datetime.datetime(2022, 1, 1).
+        end_time (datetime.datetime, optional): The end time of the resampled data. Defaults to datetime.datetime(2023, 1, 1).
+
+    Returns:
+        pd.DataFrame: A pandas DataFrame containing the resampled MMTS data.
+
+    Raises:
+        FileNotFoundError: If the CSV file does not exist.
+        ValueError: If the start time is after the end time.
+
+    Example:
+        >>> csv_path = 'data/mmts.csv'
+        >>> start_time = datetime.datetime(2022, 1, 1)
+        >>> end_time = datetime.datetime(2023, 1, 1)
+        >>> df = read_and_resample_mmts(csv_path, start_time, end_time)
+    """
+    raw_df = pd.read_csv(csv_path, index_col='Ts', sep=';', 
+        dtype={
+            'Ts': 'str',
+            'SignalName': 'str',
+            'SignalId': 'int32',
+            'MeasurementValue': 'float32',
+            'Ts_day': 'int32',
+        },
+        decimal=',',
+        infer_datetime_format=True,
+        )
+    raw_df.index = pd.to_datetime(raw_df.index)
+    resampled_df = reformat_df(raw_df, start_time, end_time)
+    
+    return resampled_df 
+
+
+def read_and_resample_prod(
+    csv_path: Union[str, Path],
+    sampling_rate: datetime.timedelta = datetime.timedelta(minutes=15),
+) -> pd.DataFrame:
+    """
+    Reads a CSV file containing production data, resamples it to a fixed frequency, and returns a pandas DataFrame.
+
+    Args:
+        csv_path (Union[str, Path]): The path to the CSV file.
+        sampling_rate (datetime.timedelta, optional): The sampling rate of the resampled data. 
+            Defaults to datetime.timedelta(minutes=15).
+
+    Returns:
+        pd.DataFrame: A pandas DataFrame containing the resampled production data.
+
+    Raises:
+        FileNotFoundError: If the CSV file does not exist.
+
+    Example:
+        >>> csv_path = 'data/production.csv'
+        >>> sampling_rate = datetime.timedelta(minutes=15)
+        >>> df = read_and_resample_prod(csv_path, sampling_rate)
+    """
+    # Read the raw data from the CSV file
+    prod = pd.read_csv(csv_path, index_col=0, sep=';')
+
+    # Convert the index to datetime and remove the ' - Actual Aggregated' suffix from column names
+    prod.index = pd.to_datetime(prod.index.str[19:35], format="%d.%m.%Y %H:%M")
+    prod.rename(
+        columns=dict(zip(list(prod.columns), 
+                         map(lambda x: x.replace('  - Actual Aggregated', ''), list(prod.columns)))), 
+        inplace=True)    
+
+    # Resample the data to the specified sampling rate and fill missing values
+    resampled_df = prod.resample(sampling_rate).mean().fillna(method='bfill')
+    
+    return resampled_df
+
+
+def add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Adds temporal features to a pandas DataFrame.
+
+    The function adds four new columns to the input DataFrame, representing the hour of the day and the day of the year
+    as sine and cosine functions. These features can be useful for time series analysis and modeling.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame.
+
+    Returns:
+        pd.DataFrame: A new DataFrame with the added temporal features.
+
+    Example:
+        >>> df = pd.read_csv('data.csv', index_col='timestamp')
+        >>> df_with_temporal_features = add_temporal_features(df)
+    """
+    df_temporal = df.copy()
+    df_temporal['hour_sin'] = np.sin(2 * np.pi * (df_temporal.index.hour*60 + df_temporal.index.minute)/24.0/60)
+    df_temporal['hour_cos'] = np.cos(2 * np.pi * (df_temporal.index.hour*60 + df_temporal.index.minute)/24.0/60)
+    df_temporal['dayofyear_sin'] = np.sin(2 * np.pi * (df_temporal.index.dayofyear)/365)
+    df_temporal['dayofyear_cos'] = np.cos(2 * np.pi * (df_temporal.index.dayofyear)/365)
+    
+    return df_temporal
+    
+
+def get_data_df(split: Literal['train', 'val'], station: Literal['A', 'B']) -> pd.DataFrame:
+    """Reads the data from the CSV files and returns a pandas DataFrame for the specified split.
+    
+    Args:
+        split (Literal['train', 'val']): The split to return the data for.
+        station (Literal['A', 'B']): The station to return the data for.
+    
+    Returns:
+        pd.DataFrame: A pandas DataFrame containing the data for the specified split.
+    """
+    if split == 'train':
+        start_time = datetime.datetime(2022, 1, 1)
+        end_time = datetime.datetime(2022, 12, 31)
+    elif split == 'val':
+        start_time = datetime.datetime(2023, 1, 1)
+        end_time = datetime.datetime(2023, 4, 1)
+    else:
+        raise ValueError(f'Invalid split: {split}')
+    
+    station = read_and_resample_mmts(f'data/station{station}_{split}.csv', start_time, end_time)
+    prod_ch = read_and_resample_prod(f'data/CH_generation_{split}_utc.csv')
+    prod_de = read_and_resample_prod(f'data/DE_generation_{split}_utc.csv')
+    joined_df = pd.concat([station, prod_ch.add_prefix('CH '), prod_de.add_prefix('DE ')], axis=1, join='inner')
+    
+    return joined_df
