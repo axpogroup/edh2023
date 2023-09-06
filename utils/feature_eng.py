@@ -12,7 +12,7 @@ def reformat_df(
     start_time: datetime.datetime = datetime.datetime(2022, 1, 1),
     end_time: datetime.datetime = datetime.datetime(2023, 1, 1),
     sampling_rate: datetime.timedelta = datetime.timedelta(minutes=15),
-    ) -> pd.DataFrame:
+) -> pd.DataFrame:
     """Resample a dataframe containing measurements stacked in rows to a dataframe with columns for each measurement.
     Resample to a chosen sampling rate by calculating the weighed mean of measurement values.
 
@@ -38,7 +38,8 @@ def resample_df(df_raw: pd.DataFrame,
                 start_time: datetime.datetime,
                 end_time: datetime.datetime,
                 signalname: str,
-                sampling_rate: datetime.timedelta = datetime.timedelta(minutes=15)) -> pd.DataFrame:
+                sampling_rate: datetime.timedelta = datetime.timedelta(minutes=15),
+) -> pd.DataFrame:
     """
     Resamples a dataframe to a chosen sampling rate by calculating the weighed mean of measurement values.
 
@@ -78,7 +79,7 @@ def resample_df(df_raw: pd.DataFrame,
     return df_resampled
 
 
-def reformat_df_commas(csv_path: Union[str, Path]):
+def replace_commas(csv_path: Union[str, Path]):
     """Reformat csv file to semicolon separated columns.
     
     Args:
@@ -127,7 +128,6 @@ def read_and_resample_mmts(
             'Ts_day': 'int32',
         },
         decimal=',',
-        infer_datetime_format=True,
         )
     raw_df.index = pd.to_datetime(raw_df.index)
     resampled_df = reformat_df(raw_df, start_time, end_time)
@@ -174,6 +174,30 @@ def read_and_resample_prod(
     return resampled_df
 
 
+def read_and_resample_weather(
+    csv_path: Union[str, Path],
+    sampling_rate: datetime.timedelta = datetime.timedelta(minutes=15),
+) -> pd.DataFrame:
+    """_summary_
+
+    Args:
+        csv_path (Union[str, Path]): _description_
+        sampling_rate (datetime.timedelta, optional): _description_. Defaults to datetime.timedelta(minutes=15).
+
+    Returns:
+        pd.DataFrame: _description_
+    """
+    weather = pd.read_csv(csv_path, index_col=0, skiprows=9)
+    weather.index = pd.to_datetime(weather.index, format="%Y%m%dT%H%M")
+    weather.rename(
+        columns=dict(zip(list(weather.columns), 
+                         map(lambda x: x.replace('Basel ', ''), list(weather.columns)))), 
+        inplace=True)  
+    resampled_df = weather.resample(sampling_rate).mean().fillna(method='bfill') 
+    
+    return resampled_df
+
+
 def add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Adds temporal features to a pandas DataFrame.
@@ -191,16 +215,28 @@ def add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
         >>> df = pd.read_csv('data.csv', index_col='timestamp')
         >>> df_with_temporal_features = add_temporal_features(df)
     """
+    holidays = ['01.01.2022', '15.04.2022', '18.04.2022', '01.05.2022', '26.05.2022',
+                '06.06.2022', '01.08.2022', '15.08.2022', '18.09.2022', '25.12.2022', '26.12.2022',
+                '01.01.2023', '14.04.2023', '17.04.2023', '01.05.2023', '25.05.2023']
+    holidays = pd.to_datetime(holidays, format='%d.%m.%Y')
     df_temporal = df.copy()
     df_temporal['hour_sin'] = np.sin(2 * np.pi * (df_temporal.index.hour*60 + df_temporal.index.minute)/24.0/60)
     df_temporal['hour_cos'] = np.cos(2 * np.pi * (df_temporal.index.hour*60 + df_temporal.index.minute)/24.0/60)
     df_temporal['dayofyear_sin'] = np.sin(2 * np.pi * (df_temporal.index.dayofyear)/365)
     df_temporal['dayofyear_cos'] = np.cos(2 * np.pi * (df_temporal.index.dayofyear)/365)
+    df_temporal['dayofweek_sin'] = np.sin(2 * np.pi * (df_temporal.index.dayofweek)/7)
+    df_temporal['dayofweek_cos'] = np.cos(2 * np.pi * (df_temporal.index.dayofweek)/7)
+    
+    # mark as holiday if timestamp is in holidays or weekend
+    df_temporal['holiday'] = df_temporal.index.isin(holidays) | df_temporal.index.dayofweek.isin([5, 6])
     
     return df_temporal
     
 
-def get_data_df(split: Literal['train', 'val'], station: Literal['A', 'B']) -> pd.DataFrame:
+def get_data_df(
+    split: Literal['train', 'val'], 
+    station: Literal['A', 'B'],
+) -> pd.DataFrame:
     """Reads the data from the CSV files and returns a pandas DataFrame for the specified split.
     
     Args:
@@ -219,9 +255,10 @@ def get_data_df(split: Literal['train', 'val'], station: Literal['A', 'B']) -> p
     else:
         raise ValueError(f'Invalid split: {split}')
     
-    station = read_and_resample_mmts(f'data/station{station}_{split}.csv', start_time, end_time)
+    weather_ch = read_and_resample_weather(f'data/CH_basel_weather_data_{split}_utc.csv')
+    station = read_and_resample_mmts(f'data/station{station}_{split}_utc.csv', start_time, end_time)
     prod_ch = read_and_resample_prod(f'data/CH_generation_{split}_utc.csv')
     prod_de = read_and_resample_prod(f'data/DE_generation_{split}_utc.csv')
-    joined_df = pd.concat([station, prod_ch.add_prefix('CH '), prod_de.add_prefix('DE ')], axis=1, join='inner')
+    joined_df = pd.concat([station, prod_ch.add_prefix('CH '), prod_de.add_prefix('DE '), weather_ch], axis=1, join='inner')
     
     return joined_df
