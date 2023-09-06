@@ -30,7 +30,8 @@ cd edh2023
 3. **Accessing Datasets:**
 The training and validation datasets for both substations are located in the `/data` directory on the Jupyter Hub VM. You can copy them to the data directory with 
 ```console
-cp /home/data/* ./data
+cp /home/data/data.zip ~/edh2023/data.zip
+unzip data.zip
 ```
 
 4. **Installing Dependencies:**

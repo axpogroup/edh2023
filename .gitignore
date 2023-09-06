@@ -160,6 +160,7 @@ cython_debug/
 #.idea/
 
 .idea
+data.zip
 data/
 other_data/
 .vscode/
