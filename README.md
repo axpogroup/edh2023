@@ -46,15 +46,18 @@ To ensure your environment has the necessary packages, run the following command
 ```console
 pip install -r requirements.txt
 ```
-Register the virtual 
-
+Register the virtual environment as ipykernel:
+```console
+python -m ipykernel install --user --name=edh_venv
+```
+It will take a few seconds for the new environment to show up as an available. You can open the `sample_notebook.ipynb` and select the environment as kernel once it is and get going with digging into the details.
 ### Understanding the Challenge
 
 Before you start coding, it's important to grasp the problem at hand:
 
-- You are provided with time series measurements and target voltages for two substations with shunt reactors.
+- You are provided with time series of substation measurements, energy production, weather data, and target voltages for two substations with shunt reactors.
 
-- The goal is to create a model that can predict voltages in the substation such that, based on these predictions, one can decide when to turn the shunt reactors on or off to keep the measured voltage close to the target voltage. You should keep the average **number of on-off/off-on switches below 2/day** to limit wear and tear on system components.
+- The goal is to create a model that can predict voltages in the substation such that, based on these predictions, one can decide when to turn the shunt reactors on or off to keep the measured voltage close to the target voltage. You should keep the average **number of on-off/off-on switches below 2/day** to limit wear and tear on system components. One of the main challenges herein is
 
 ### Your Task
 
@@ -64,7 +67,7 @@ Feel free to explore different machine learning algorithms, techniques, and prep
 
 ### Evaluation
 
-Once you've developed your model, it's time to submit your solution. In the root directory of your cloned repository, create a subdirectory named `submission`. Place your trained model and any necessary code files within this directory.
+You can evaluate your model with either the root mean square error for the voltage prediction or `utils.eval.alternative_strategy_reward`. Both of these are relevant metrics for us.
 
 ## Need Help?
 
