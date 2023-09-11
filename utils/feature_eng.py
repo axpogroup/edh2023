@@ -169,7 +169,7 @@ def read_and_resample_prod(
         inplace=True)    
 
     # Resample the data to the specified sampling rate and fill missing values
-    resampled_df = prod.resample(sampling_rate).mean().fillna(method='bfill')
+    resampled_df = prod.resample(sampling_rate).mean().ffill()
     
     return resampled_df
 
@@ -193,7 +193,7 @@ def read_and_resample_weather(
         columns=dict(zip(list(weather.columns), 
                          map(lambda x: x.replace('Basel ', ''), list(weather.columns)))), 
         inplace=True)  
-    resampled_df = weather.resample(sampling_rate).mean().fillna(method='bfill') 
+    resampled_df = weather.resample(sampling_rate).mean().bfill()
     
     return resampled_df
 
