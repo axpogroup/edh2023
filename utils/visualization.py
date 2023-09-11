@@ -29,9 +29,9 @@ def plot_substation_measurements(
     station: str,
 ) -> go._figure.Figure:
     if station == 'B':
-        prefix = 'WINWIN'
+        prefix = 'ZLQZLQ'
     elif station == 'A':
-        prefix = 'BREFAL'
+        prefix = 'EUHIDO'
     else:
         raise ValueError(f'Invalid station {station}.')
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.05)

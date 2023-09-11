@@ -1,6 +1,8 @@
+import os
+import csv
 import datetime
 import glob
-from typing import List, Union, Literal
+from typing import List, Union, Literal, Callable
 from pathlib import Path
 
 import numpy as np
@@ -262,3 +264,69 @@ def get_data_df(
     joined_df = pd.concat([station, prod_ch.add_prefix('CH '), prod_de.add_prefix('DE '), weather_ch], axis=1, join='inner')
     
     return joined_df
+
+
+def hash_characters(string: str, seed: int) -> str:
+    """
+    Hashes each character in a string using a seed value.
+
+    Args:
+        string (str): The string to hash.
+        seed (int): The seed value to use for the hash.
+
+    Returns:
+        str: The hashed string.
+    """
+    hash_letters = ''
+    for c in bytearray(string, 'utf-8'):
+        hash_letters += chr(int(bytes(bin(c + seed)[:9], 'utf-8')[2:], 2))
+    return str(hash_letters)
+
+
+def unhash_characters(string: str, seed: int) -> str:
+    """
+    Unhashes each character in a string using a seed value.
+
+    Args:
+        string (str): The string to unhash.
+        seed (int): The seed value to use for the unhash.
+
+    Returns:
+        str: The unhashed string.
+    """
+    return hash_characters(string, -seed)
+
+
+def anonymize_csv_files(
+    files, 
+    n, 
+    func: Callable = hash_characters, 
+    func_seed: int = 0, 
+    skip_rows: int = 1
+) -> List[str]:
+    """
+    Applies a function to the first n characters of each row of a list of CSV files, and writes the anonymized data to new CSV files.
+
+    Args:
+        files (list): A list of file paths to CSV files.
+        n (int): The number of characters to apply the function to.
+        func (function): The function to apply to the first n characters of each row.
+        skip_rows (int): The number of rows to skip at the beginning of each CSV file.
+
+    Returns:
+        list: A list of the file paths to the new CSV files.
+    """
+    new_files = []
+    for file in files:
+        new_file = os.path.splitext(file)[0] + '_anonymized.csv'
+        with open(file, 'r') as f_in, open(new_file, 'w', newline='') as f_out:
+            reader = csv.reader(f_in, delimiter=';')
+            writer = csv.writer(f_out, delimiter=';')
+            for i, row in enumerate(reader):
+                if i < skip_rows:
+                    writer.writerow(row)
+                else:
+                    anonymized_name = func(row[0][:n], func_seed) + row[0][n:]
+                    writer.writerow([anonymized_name] + row[1:])
+        new_files.append(new_file)
+    return new_files
