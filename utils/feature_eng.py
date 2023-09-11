@@ -65,7 +65,7 @@ def resample_df(df_raw: pd.DataFrame,
     df = pd.concat([df, dfaug]).sort_index()
     df = df.reset_index().drop_duplicates(subset='index', keep='last').set_index('index').sort_index() # remove duplicate index
 
-    df['MeasurementValue'] = df['MeasurementValue'].interpolate(method='pad').interpolate(method='backfill')
+    df['MeasurementValue'] = df['MeasurementValue'].interpolate(method='pad').bfill()
     df['Counter'] = df['Counter'].interpolate(method='pad')
 
     df.loc[df.index[0], 'MeasurementValue'] = df.loc[df.index[1], 'MeasurementValue']

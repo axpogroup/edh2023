@@ -1,4 +1,4 @@
-pandas>=2.0.0
+pandas==2.0.3
 plotly>=5.16.0
 nbformat>=4.2.0
 matplotlib>=3.7.2
