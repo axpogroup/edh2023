@@ -40,7 +40,7 @@ def plot_substation_measurements(
     fig.add_trace(go.Scatter(x=measurements_df.index, y=measurements_df[f"{prefix}SPHSDL_VNUUSOL"], name=f"{prefix}SPHSDL_VNUUSOL"), row=1, col=1)
     fig.add_trace(go.Scatter(x=measurements_df.index, y=measurements_df[f"{prefix}110KOMDROQ"], name=f"{prefix}110KOMDROQ"), row=2, col=1)
 
-    fig.update_yaxes(title_text="Voltage in V", row=1, col=1)
+    fig.update_yaxes(title_text="Voltage in kV", row=1, col=1)
     fig.update_yaxes(title_text="Reactive Power in Mvar", row=2, col=1)
     fig.update_xaxes(title_text="Time", row=2, col=1)
     
