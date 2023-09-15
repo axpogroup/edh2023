@@ -11,7 +11,7 @@ Before you begin, please ensure you have the following prerequisites:
 
 1. **Access to the VM with Jupyter Hub:** We've provided a virtual machine with Jupyter Hub installed. This will serve as your development environment. Just go to our [Jupyter Hub](http://axe-lab-appl-energy-data-hackdays.westeurope.cloudapp.azure.com/hub) and sign in with a username (no special characters or spaces) and password of your choosing - just don't forget it.
 
-You can also develop on your local machine if you prefer. In this case you can download the training data from our [onedrive](https://axpogrp.sharepoint.com/:f:/s/CMTYTOMDigitalAssetSolutions-MTA/Egl90FJJk3hPqqRx8VOa690Bv86Iz06FaFBMdVxu_jH0UA?e=msOiL1) <span style="color:red">TODO: make a link that is accessible without Axpo credentials</span>.
+You can also develop on your local machine if you prefer. Talk to us about getting the dataset onto your local machine.
 
 ### Setting Up Your Environment
 
