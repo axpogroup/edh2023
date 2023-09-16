@@ -122,3 +122,16 @@ def maximize_virtual_points(
             return reward_shunt_on, virtual_reward_shunt_off, virtual_dV_shunt_off, 0
         else:
             return reward_shunt_on, reward_shunt_on, dV, WQ
+
+
+def virtual_voltages(
+        dV: np.array,
+        WQ: np.array,
+        shunt_reactor_sensitivity: float,
+        reactive_power_range: [float, float] = [35, 90],
+    ) -> Tuple[np.array, np.array, np.array]:
+    virtual_dV_shunt_off = dV + shunt_reactor_sensitivity*WQ
+    virtual_dV_shunt_min = virtual_dV_shunt_off - shunt_reactor_sensitivity*reactive_power_range[0]
+    virtual_dV_shunt_max = virtual_dV_shunt_off - shunt_reactor_sensitivity*reactive_power_range[1]
+        
+    return virtual_dV_shunt_off, virtual_dV_shunt_min, virtual_dV_shunt_max
